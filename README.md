@@ -1,8 +1,3 @@
-Perfecto 🚀 Vi tu archivo y armé un **README.md** profesional para tu proyecto de visor de streams (Twitch + Kick).
-
-Aquí tenés una propuesta lista para usar:
-
----
 
 # 🎥 MultiStream Viewer
 
@@ -50,7 +45,3 @@ Podés probarlo abriendo directamente el archivo `index.html` en tu navegador.
 
 Desarrollado por **RyderX** 💻
 Si te gusta el proyecto, ¡no olvides dejar una ⭐ en el repo!
-
----
-
-¿Querés que lo arme en **formato markdown listo para copiar/pegar** (con títulos `#`, `##`, etc.) o preferís que te lo deje como un archivo `README.md` ya generado para que lo descargues?
