@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiStream</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color: #0f172a; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgb(30 41 59 / 0.5); }
+        ::-webkit-scrollbar-thumb { background: rgb(56 189 248 / 0.6); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgb(56 189 248 / 1); }
+        
+        .main-container::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                radial-gradient(at 20% 20%, rgb(147 51 234 / 0.15) 0px, transparent 50%),
+                radial-gradient(at 80% 10%, rgb(34 211 238 / 0.15) 0px, transparent 50%),
+                radial-gradient(at 70% 80%, rgb(236 72 153 / 0.15) 0px, transparent 50%);
+            z-index: 0; pointer-events: none; transition: opacity 0.5s ease-in-out;
+        }
+
+        @keyframes gradient-animation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .animated-gradient { background-size: 200% 200%; animation: gradient-animation 8s ease infinite; }
+
+        .status-circle { width: 0.875rem; height: 0.875rem; border-radius: 50%; transition: all 0.3s ease; flex-shrink: 0; }
+        .glowing { box-shadow: 0 0 10px 1px rgba(74, 222, 128, 0.8); }
+        .glassmorphism { background: rgba(30, 41, 59, 0.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        
+        @keyframes pulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 4px 0px rgba(250, 204, 21, 0.4); } 50% { transform: scale(1.1); box-shadow: 0 0 8px 2px rgba(250, 204, 21, 0.7); } }
+        .checking-status { animation: pulse 1.5s infinite; }
+
+        #stream-container.layout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
+        #stream-container.layout-vertical { display: flex; flex-direction: column; align-items: center; }
+        #stream-container.layout-focus { display: flex; flex-wrap: wrap; align-items: flex-start; }
+        
+        .stream-card { transition: all 0.4s ease-in-out; }
+        .layout-vertical .stream-card { width: 100%; max-width: 900px; }
+        .layout-focus .stream-card { flex: 1 1 300px; }
+        .layout-focus .stream-card.is-focused { flex: 3 1 65%; order: -1; border-color: rgb(56 189 248 / 0.8); }
+
+        .layout-btn.active { background-color: rgb(56 189 248); color: white; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 antialiased overflow-y-scroll">
+    <div class="main-container relative min-h-screen">
+    <div class="relative z-10 container mx-auto px-4 py-8 md:py-12">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 pb-2 animated-gradient">
+                Visor de Streams
+            </h1>
+            <p class="text-lg text-slate-400 mt-2 max-w-2xl mx-auto">Añade tus canales, elige un diseño y disfruta de la acción en vivo.</p>
+        </header>
+
+        <section class="mb-8 p-6 glassmorphism rounded-2xl shadow-2xl">
+            <h2 class="text-2xl font-bold mb-4 text-center text-slate-200">Añadir un Canal</h2>
+            <form id="add-channel-form" class="flex flex-col sm:flex-row items-center gap-4 max-w-xl mx-auto">
+                <input type="text" id="channel-name-input" placeholder="Nombre del canal" class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg focus:ring-2 focus:ring-cyan-400 focus:outline-none transition-all duration-300 shadow-inner" required>
+                <select id="platform-select" class="w-full sm:w-auto px-4 py-2.5 bg-slate-800/80 border border-slate-700 rounded-lg focus:ring-2 focus:ring-cyan-400 focus:outline-none transition">
+                    <option value="kick">Kick</option>
+                    <option value="twitch">Twitch</option>
+                </select>
+                <button type="submit" class="w-full sm:w-auto bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold px-5 py-2.5 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-400/40">Añadir</button>
+            </form>
+        </section>
+
+        <section class="mb-12 p-6 glassmorphism rounded-2xl shadow-2xl">
+            <div class="flex flex-col sm:flex-row flex-wrap justify-between items-center gap-4 mb-6">
+                <h2 class="text-2xl font-bold text-slate-200">Panel de Control</h2>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-medium text-slate-300">Diseño:</h3>
+                        <div id="layout-switcher" class="flex items-center gap-1 rounded-lg bg-slate-800 p-1 border border-slate-700">
+                            <button title="Cuadrícula" data-layout="grid" class="layout-btn p-2 rounded-md transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+                            <button title="Foco" data-layout="focus" class="layout-btn p-2 rounded-md transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></button>
+                            <button title="Vertical" data-layout="vertical" class="layout-btn p-2 rounded-md transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></button>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                    <button id="clear-streams" title="Limpiar Vista" class="text-sm bg-slate-700/80 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2 border border-slate-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                    </button>
+                    <button id="refresh-statuses" title="Refrescar Estados" class="text-sm bg-slate-700/80 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2 border border-slate-700">
+                        <svg id="refresh-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M20 4h-5v5M4 20h5v-5"></path></svg>
+                        <svg id="loading-icon" class="w-4 h-4 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </button>
+                    </div>
+                </div>
+            </div>
+            <div id="channel-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 min-h-[58px]"></div>
+        </section>
+
+        <main id="stream-container" class="gap-6 lg:gap-8 min-h-[400px] relative">
+            <div id="welcome-message" class="absolute inset-0 flex items-center justify-center col-span-full transition-opacity duration-500">
+                <div class="text-center p-8">
+                    <svg class="mx-auto h-12 w-12 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+                    <h3 class="mt-4 text-xl font-semibold text-slate-300">Tu panel está vacío</h3>
+                    <p class="mt-1 text-slate-400">Selecciona un canal para empezar a ver.</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-16 text-slate-500"><p>Visor de Streams &copy; 2025 by RyderX. Diseñado para una experiencia superior.</p></footer>
+    </div>
+    </div>
+
+    <div id="custom-alert" class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50 fade-in">
+        <div class="bg-slate-800 rounded-lg p-8 shadow-xl max-w-sm w-full text-center border border-slate-700">
+            <p id="alert-message" class="text-slate-200 text-lg mb-6"></p>
+            <button id="alert-close-btn" class="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold px-8 py-2.5 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg shadow-cyan-500/30">OK</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dom = {
+                body: document.body,
+                channelList: document.getElementById('channel-list'),
+                streamContainer: document.getElementById('stream-container'),
+                addForm: document.getElementById('add-channel-form'),
+                channelNameInput: document.getElementById('channel-name-input'),
+                platformSelect: document.getElementById('platform-select'),
+                refreshBtn: document.getElementById('refresh-statuses'),
+                clearStreamsBtn: document.getElementById('clear-streams'),
+                welcomeMsg: document.getElementById('welcome-message'),
+                alertModal: document.getElementById('custom-alert'),
+                alertMsg: document.getElementById('alert-message'),
+                alertCloseBtn: document.getElementById('alert-close-btn'),
+                layoutSwitcher: document.getElementById('layout-switcher'),
+            };
+
+            const icons = {
+                twitch: `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0h1.714v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>`,
+                kick: `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.33 3.534h-4.668l-3.234 8.784L8.194 3.534H3.53l5.88 16.932h4.668l5.252-16.932Z"/></svg>`,
+            };
+            
+            let channels = [];
+            let currentLayout = 'grid';
+
+            const storage = {
+                getChannels: () => JSON.parse(localStorage.getItem('streamViewerChannels')) || [],
+                saveChannels: (ch) => localStorage.setItem('streamViewerChannels', JSON.stringify(ch)),
+                getLayout: () => localStorage.getItem('streamViewerLayout') || 'grid',
+                saveLayout: (layout) => localStorage.setItem('streamViewerLayout', layout),
+            };
+
+            const showAlert = (message) => {
+                dom.alertMsg.textContent = message;
+                dom.alertModal.classList.add('flex');
+                dom.alertModal.classList.remove('hidden');
+            };
+
+            const hideAlert = () => dom.alertModal.classList.add('hidden');
+            
+            const updateWelcomeMessage = () => {
+                if (!dom.welcomeMsg) return;
+                const visible = dom.streamContainer.querySelectorAll('.stream-card:not(.hidden)').length > 0;
+                dom.welcomeMsg.classList.toggle('opacity-0', visible);
+                dom.welcomeMsg.classList.toggle('pointer-events-none', visible);
+            };
+
+            const applyLayout = (layout) => {
+                currentLayout = layout;
+                dom.streamContainer.className = `min-h-[400px] relative gap-6 lg:gap-8 layout-${layout}`;
+                dom.layoutSwitcher.querySelector('.active')?.classList.remove('active');
+                dom.layoutSwitcher.querySelector(`[data-layout=${layout}]`)?.classList.add('active');
+                storage.saveLayout(layout);
+            };
+
+            const createChannelUI = (channel) => {
+                const { id, name, platform } = channel;
+                const isTwitch = platform === 'twitch';
+
+                const controller = document.createElement('div');
+                controller.id = `controller-${id}`;
+                controller.className = 'channel-controller flex items-center justify-between p-3 bg-slate-800/70 rounded-lg cursor-pointer transition-all duration-300 hover:bg-slate-700/90 hover:scale-105 relative fade-in border border-transparent hover:border-cyan-400/50';
+                controller.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><div class="status-circle bg-slate-500" title="Verificando..."></div><span class="font-semibold text-sm truncate text-slate-300" title="${name}">${name}</span></div><div class="flex items-center gap-1"><span title="${platform}" class="p-1 rounded ${isTwitch ? 'text-purple-300' : 'text-green-300'}">${isTwitch ? icons.twitch : icons.kick}</span><button data-id="${id}" class="remove-btn text-slate-500 hover:text-red-400 transition-colors p-1 rounded-full opacity-50 hover:opacity-100"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg></button></div>`;
+                
+                const streamCard = document.createElement('div');
+                streamCard.id = `stream-${id}`;
+                streamCard.className = 'stream-card bg-slate-800 rounded-lg shadow-2xl overflow-hidden hidden border-2 border-slate-700';
+                const embedUrl = isTwitch ? `https://player.twitch.tv/?channel=${name}&parent=${window.location.hostname}&muted=true&autoplay=true` : `https://player.kick.com/${name}?autoplay=true&muted=true`;
+                streamCard.innerHTML = `<div class="aspect-video bg-black"><iframe src="${embedUrl}" class="w-full h-full" frameborder="0" scrolling="no" allowfullscreen="true" loading="lazy"></iframe></div><div class="p-3 bg-slate-800/50 flex justify-between items-center"><h3 class="font-bold truncate">${name}</h3><p class="text-sm ${isTwitch ? 'text-purple-400' : 'text-green-400'} capitalize font-medium">${platform}</p></div>`;
+
+                if (dom.channelList.querySelector('p')) dom.channelList.innerHTML = '';
+                dom.channelList.appendChild(controller);
+                dom.streamContainer.appendChild(streamCard);
+                
+                controller.addEventListener('click', (e) => {
+                    if (e.target.closest('.remove-btn')) return;
+                    
+                    const isVisible = !streamCard.classList.contains('hidden');
+                    streamCard.classList.toggle('hidden', isVisible);
+                    streamCard.classList.toggle('fade-in', !isVisible);
+
+                    if (currentLayout === 'focus' && !isVisible) {
+                        dom.streamContainer.querySelector('.is-focused')?.classList.remove('is-focused');
+                        streamCard.classList.add('is-focused');
+                    }
+                    updateWelcomeMessage();
+                });
+
+                controller.querySelector('.remove-btn').addEventListener('click', () => removeChannel(id));
+                checkChannelStatus(channel, controller);
+            };
+            
+            async function checkChannelStatus(channel, controller) {
+                const statusCircle = controller.querySelector('.status-circle');
+                statusCircle.className = 'status-circle bg-yellow-400 checking-status';
+                let isOnline = false;
+                try {
+                    const endpoint = channel.platform === 'twitch'
+                        ? `https://decapi.me/twitch/uptime/${channel.name.toLowerCase()}`
+                        : `https://kick.com/api/v2/channels/${channel.name.toLowerCase()}`;
+                    const res = await fetch(endpoint);
+                    if (res.ok) {
+                        if (channel.platform === 'twitch') isOnline = !(await res.text()).includes('offline');
+                        else { const data = await res.json(); isOnline = !!data.livestream; }
+                    }
+                } catch (error) { console.error(`Error verificando ${channel.name}:`, error);
+                } finally {
+                    statusCircle.className = `status-circle ${isOnline ? 'bg-green-400 glowing' : 'bg-red-500'}`;
+                    statusCircle.title = isOnline ? 'En vivo' : 'Desconectado';
+                }
+            }
+
+            const addChannel = (name, platform) => {
+                if (!name.trim()) return;
+                const channelName = name.trim();
+                if (channels.some(c => c.name.toLowerCase() === channelName.toLowerCase() && c.platform === platform)) {
+                    showAlert('Este canal ya ha sido añadido.'); return;
+                }
+                const newChannel = { id: crypto.randomUUID(), platform, name: channelName };
+                channels.push(newChannel);
+                storage.saveChannels(channels);
+                createChannelUI(newChannel);
+            };
+
+            const removeChannel = (id) => {
+                channels = channels.filter(c => c.id !== id);
+                storage.saveChannels(channels);
+                document.getElementById(`controller-${id}`)?.remove();
+                document.getElementById(`stream-${id}`)?.remove();
+                updateWelcomeMessage();
+                if (channels.length === 0) dom.channelList.innerHTML = `<p class="col-span-full text-center text-slate-400">Añade un canal para empezar.</p>`;
+            };
+            
+            const refreshAllStatuses = async () => {
+                const btn = dom.refreshBtn;
+                const icon = btn.querySelector('#refresh-icon');
+                const loader = btn.querySelector('#loading-icon');
+                
+                btn.disabled = true;
+                icon.classList.add('hidden');
+                loader.classList.remove('hidden');
+
+                await Promise.all(channels.map(ch => checkChannelStatus(ch, document.getElementById(`controller-${ch.id}`))));
+                
+                btn.disabled = false;
+                icon.classList.remove('hidden');
+                loader.classList.add('hidden');
+            };
+
+            const clearStreamView = () => {
+                dom.streamContainer.querySelectorAll('.stream-card:not(.hidden)').forEach(s => {
+                    s.classList.add('hidden');
+                    s.classList.remove('fade-in', 'is-focused');
+                });
+                updateWelcomeMessage();
+            };
+            
+            const init = () => {
+                dom.addForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    addChannel(dom.channelNameInput.value, dom.platformSelect.value);
+                    dom.channelNameInput.value = '';
+                });
+                dom.refreshBtn.addEventListener('click', refreshAllStatuses);
+                dom.clearStreamsBtn.addEventListener('click', clearStreamView);
+                dom.alertCloseBtn.addEventListener('click', hideAlert);
+                dom.layoutSwitcher.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.layout-btn');
+                    if(btn) applyLayout(btn.dataset.layout);
+                });
+
+                channels = storage.getChannels();
+                applyLayout(storage.getLayout());
+
+                if (channels.length === 0) dom.channelList.innerHTML = `<p class="col-span-full text-center text-slate-400">Añade un canal para empezar.</p>`;
+                else channels.forEach(createChannelUI);
+                
+                updateWelcomeMessage();
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>
+
