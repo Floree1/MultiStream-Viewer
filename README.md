@@ -24,7 +24,7 @@ Un visor de streams moderno y personalizable que te permite **agregar canales de
 
 Podés probarlo abriendo directamente el archivo `index.html` en tu navegador.
 
-> 🌐 O desplegarlo en **GitHub Pages** / **Vercel** / **Netlify**.
+> 🌐 https://floree1.github.io/MultiStream-Viewer/
 
 ## 📂 Instalación
 
